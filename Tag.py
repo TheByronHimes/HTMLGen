@@ -57,6 +57,9 @@ class Tag:
                     if self.isValidClassName(self, a) and name in self.classes:
                         self.classes.add(a)
 
+        def removeAll(self):
+            self.classes = list()
+
         def toHtml(self):
             output = ''
             if len(self.classes) > 0:
@@ -127,12 +130,15 @@ class Tag:
                     self.set(k,v)
                 elif attributes.count('=') > 1:
                     try:
-                        attributes = attributes.split(';')
+                        if attributes.count(';') > 0:
+                            attributes = attributes.split(';')
+                        else:
+                            attributes = attributes.split(' ')
                         for s in attributes:
-                            k,v = self.parseValue(attributes, '=')
+                            k,v = self.parseValue(s, '=')
                             self.set(k,v)
                     except:
-                        raise Exception('Multiple attributes must be passed in with format "attName:attValue; attName:attValue"')                
+                        raise Exception('Multiple attributes must be passed in with format "attName=attValue; attName=attValue"')                
 
         @staticmethod
         # TODO: add base class and abstract this logic out 
@@ -163,26 +169,25 @@ class Tag:
         tag_name, 
         text='', 
         children=list(), 
-        class_list='', 
+        classes='', 
         tag_id='', 
         styles='',
         attributes=''
     ):
         self.tag_name = tag_name
         self.text = text
+
+        self.children = list()
         if type(children) == Tag:
-            children = [children]
-        elif type(children) == str:
-            children = children.split()
+            self.addChildren(children)
+        elif type(children) == list:
+            for child in children:
+                self.addChild(child)
             
-        self.children = children
-        for child in self.children:
-            child.indent()
-            
-        if class_list == '':
+        if classes == '':
             self.classes = self.Classes()
         else:
-            self.classes = self.Classes(class_list)
+            self.classes = self.Classes(classes)
         
         self.tag_id = tag_id
 
@@ -200,8 +205,12 @@ class Tag:
         self.inner_tabs = 1
         
     def addChild(self, child):
+        child.indent(self.outer_tabs)
         self.children.append(child)
-        self.children[-1].indent()
+
+    def addScript(self, src=''):
+        script = Tag('script', attributes='src=%s'%src)
+        self.addChild(script)
         
     def dedent(self):
         self.outer_tabs -= 1
@@ -231,11 +240,15 @@ class Tag:
         }
         return extras
 
-    def indent(self):
-        self.outer_tabs += 1
-        self.inner_tabs += 1
+    def indent(self, parent=0):
+        if parent==0:
+            self.outer_tabs += 1
+        else:
+            self.outer_tabs = parent + 1
+
+        self.inner_tabs = self.outer_tabs + 1
         for child in self.children:
-            child.indent()         
+            child.indent(self.outer_tabs)         
     
     def removeAllChildren(self):
         for i in reversed(range(len(self.children))):
@@ -248,25 +261,11 @@ class Tag:
     def removeChild(self, obj):
         self.children.remove(obj)
         
-    def removeClasses(self, *args):
-        if len(args) == 1: 
-            if type(args[0]) == str and args[0].strip().count(' ') > 0:
-                args = args[0].split()
-            elif type(args[0]) in (tuple, list):
-                args = args[0]
-                
-        for class_name in args:
-            if class_name in self.class_list:
-                self.class_list.remove(class_name)
-        
-    def __str__(self):
-        return self.tagify()
-
     def tagExtrasToHtml(self):
         extras = self.getTagExtras()
         return ' '.join([extras[key].toHtml() for key in extras if len(extras[key].toHtml()) > 0])
         
-    def tagify(self):
+    def __str__(self):
         if len(self.children) == 0:
             return "%s<%s %s>%s</%s>" % (
                 "\t" * self.outer_tabs, 
@@ -276,11 +275,11 @@ class Tag:
                 self.tag_name
             )
         else:
-            return "%s<%s %s>\n%s%s\n%s</%s>" % (
+            return "%s<%s %s>\n%s\n%s</%s>" % (
                     "\t" * self.outer_tabs, 
                     self.tag_name, 
                     self.tagExtrasToHtml(), 
-                    self.text, 
+                    #'\t' * self.inner_tabs + self.text, 
                     self.getPrintedChildren(), 
                     "\t" * self.outer_tabs, 
                     self.tag_name
@@ -289,4 +288,10 @@ class Tag:
 
         
                 
+##########################################
+##t = Tag('div', text="inner text", class_list="class1", attributes="width=250 height=500")
+##t2 = Tag('div', children=t)
+##t2.classes.add('bat')
+##print(t2)
+
 
