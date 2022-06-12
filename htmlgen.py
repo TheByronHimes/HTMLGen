@@ -1,5 +1,55 @@
 import re
 
+class Doc:
+    ''' base class inherited by Document and Stylesheet '''
+    def __init__(self, name='', output_location=''):
+        self.name = ''
+        self.output_location = ''
+    
+    def fullPath(self):
+        return self.output_location + self.name
+    
+    def getOutputLocation(self):
+        path = self.output_location
+        if len(path) > 0:
+            path += '/'
+        return path
+
+    def setOutputLocation(self, path):
+        self.output_location = path
+
+    
+    def writeToFile(self, file_name=''):
+        if file_name == '':
+            file_name = self.name
+        path = self.getOutputLocation() + file_name
+        f = open(path, 'w')
+        print(self, file=f)
+        f.close()
+        
+        #################################
+        ####### END OF Doc CLASS  #######
+        #################################  
+
+
+class StyleGroup:
+    ''' defines a bunch of styles to be applied to a selector '''
+    def __init__(self, selector=''):
+        self.selector = selector
+        self.properties = dict()
+
+    def removeProperty(self, prop):
+        if prop in self.properties:
+            self.properties.pop(prop)
+
+    def setProperty(self, prop, val):
+        if prop not in self.properties:
+            self.properties[prop] = val    
+
+        #################################
+        #### END OF StyleGroup CLASS ####
+        #################################           
+
 
 class Tag:
 
@@ -172,7 +222,8 @@ class Tag:
         classes='', 
         tag_id='', 
         styles='',
-        attributes=''
+        attributes='',
+        autoclose=True
     ):
         self.tag_name = tag_name
         self.text = text
@@ -203,6 +254,7 @@ class Tag:
         
         self.outer_tabs = 0
         self.inner_tabs = 1
+        self.autoclose = autoclose
         
     def addChild(self, child):
         child.indent(self.outer_tabs)
@@ -267,13 +319,22 @@ class Tag:
         
     def __str__(self):
         if len(self.children) == 0:
-            return "%s<%s %s>%s</%s>" % (
-                "\t" * self.outer_tabs, 
-                self.tag_name, 
-                self.tagExtrasToHtml(), 
-                self.text,
-                self.tag_name
-            )
+            if self.autoclose:
+                # example would be <p>sometext</p> or <script...></script>
+                return "%s<%s %s>%s</%s>" % (
+                    "\t" * self.outer_tabs, 
+                    self.tag_name, 
+                    self.tagExtrasToHtml(), 
+                    self.text,
+                    self.tag_name
+                )
+            else:
+                # an example is <link rel="stylesheet"...> or <br>
+                return "%s<%s %s>" % (
+                    '\t' * self.outer_tabs,
+                    self.tag_name,
+                    self.tagExtrasToHtml()
+                )
         else:
             return "%s<%s %s>\n%s\n%s</%s>" % (
                     "\t" * self.outer_tabs, 
@@ -285,13 +346,122 @@ class Tag:
                     self.tag_name
                 )
 
+    ##################################
+    #####   END OF Tag CLASS    ######
+    ##################################
+
+
+class Document(Doc):            
+    
+    def __init__(self, lang='en', name='', output_location=''):
+        super(Document, self).__init__(name=name, output_location=output_location)
+        self.doctype = ''
+        if self.name == '':
+            self.name = 'index.html'
+
+        self.content = Tag('html')
+        
+        self.stylesheets = list()
+        self.head = Tag('head')
+        self.head.addChild(Tag('title', text='Test'))
+        
+        self.body = Tag('body')
+
+        self.content.addChild(self.head)
+        self.content.addChild(self.body)
+
+    def __str__(self):
+        return str(self.content)
+
+    def linkStylesheet(self, stylesheet):
+        if type(stylesheet) != Stylesheet:
+            raise Exception('parameter for Document.linkStylesheet() must be of type Stylesheet')
+        if stylesheet not in self.stylesheets:
+            ss = Tag(
+                'link',
+                attributes="rel=stylesheet href=" + stylesheet.fullPath() + " type=text/css",
+                autoclose=False
+            )
+            self.head.addChild(ss)
+            self.stylesheets.append([stylesheet, ss])
+
+    def removeStylesheet(self, stylesheet):
+        if type(stylesheet) != Stylesheet:
+            raise Exception('parameter for Document.linkStylesheet() must be of type Stylesheet')
+        for ss in self.stylesheets:
+            if ss[0] == stylesheet:
+                self.head.removeChild(ss[1])
+                self.stylesheets.remove(ss)
+                break
+            
+       
+###########################
+## END OF Document CLASS ##
+###########################
 
         
-                
-##########################################
-##t = Tag('div', text="inner text", class_list="class1", attributes="width=250 height=500")
-##t2 = Tag('div', children=t)
-##t2.classes.add('bat')
-##print(t2)
+class Stylesheet(Doc):
+    def __init__(self, name=''):
+        super(Stylesheet, self).__init__(name=name)
+        if self.name=='':
+            self.name = 'style.css'
+        self.output_location = ''
+        self.styles = dict() #[property][value] = [class names]
 
+    def __str__(self):
+        groups = dict()
+        for pn in self.styles:
+            for pv in self.styles[pn]:
+                namesAsKey = tuple(sorted(self.styles[pn][pv]))
+                if namesAsKey not in groups:
+                    groups[namesAsKey] = list()
+                groups[namesAsKey].append('%s: %s;' % (pn, pv))
+
+        # TODO: perform smart consolidation here
+        
+        output = ''
+        for group in groups:
+            c = ',\n'.join(group)
+            c += ' {\n\t'
+            c += '\n\t'.join(groups[group])
+            c += '\n}'
+            output += c + '\n\n'
+        return output
+
+    def addStyleGroup(self, sg):
+        if type(sg) != StyleGroup:
+            raise Exception('parameter for Stylesheet.addStyleGroup() must be of type StyleGroup')
+        for prop in sg.properties:
+            self.setProperty(sg.selector, prop, sg.properties[prop])
+
+    def cleanSelectorFromProperty(self, selector, propertyName):
+        if propertyName in self.styles:
+            for val in self.styles[propertyName]:
+                if selector in self.styles[propertyName][val]:
+                    self.styles[propertyName][val].remove(selector)
+
+    def setProperty(self, selector, propertyName, propertyValue):
+        if propertyName not in self.styles:
+            self.styles[propertyName] = dict()
+        if propertyValue not in self.styles[propertyName]:
+            self.styles[propertyName][propertyValue] = list()
+
+        # search through values for this property and remove class name
+        self.cleanSelectorFromProperty(selector, propertyName)
+
+        # set property
+        self.styles[propertyName][propertyValue].append(selector)
+
+    def removeProperty(self, selector, propertyName):
+        cleanSelectorFromProperty(selector, propertyName)
+
+    def removeStyleGroup(self, sg):
+        if type(sg) != StyleGroup:
+            raise Exception('parameter for Stylesheet.removeStyleGroup() must be of type StyleGroup')
+        for prop in sg.properties:
+            self.removeProperty(sg.selector, prop)
+
+###########################
+# END OF Stylesheet CLASS #
+###########################
 
