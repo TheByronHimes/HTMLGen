@@ -1,5 +1,6 @@
 from htmlgen import Tag
 from components import Component
+import predefcss
 
 '''
 this module is meant to house the user's custom components for reuse
@@ -10,4 +11,3 @@ the intention is that it consists of:
 2. Styles, to give the component some good looks
     a. I recommend giving the 
 '''
-

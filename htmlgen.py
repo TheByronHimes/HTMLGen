@@ -229,11 +229,11 @@ class Tag:
         self.text = text
 
         self.children = list()
-        if type(children) == Tag:
-            self.addChildren(children)
-        elif type(children) == list:
+        if type(children) == list:
             for child in children:
                 self.addChild(child)
+        else:
+            self.addChild(children)
             
         if classes == '':
             self.classes = self.Classes()
@@ -265,10 +265,11 @@ class Tag:
         self.addChild(script)
         
     def dedent(self):
-        self.outer_tabs -= 1
-        self.inner_tabs -= 1
-        for child in self.children:
-            child.dedent()
+        if self.outer_tabs > 0:
+            self.outer_tabs -= 1
+            self.inner_tabs -= 1
+            for child in self.children:
+                child.dedent()
         
     def getId(self):
         output = ""
@@ -292,11 +293,11 @@ class Tag:
         }
         return extras
 
-    def indent(self, parent=0):
-        if parent==0:
+    def indent(self, parent_tabs=0):
+        if parent_tabs==0:
             self.outer_tabs += 1
         else:
-            self.outer_tabs = parent + 1
+            self.outer_tabs = parent_tabs + 1
 
         self.inner_tabs = self.outer_tabs + 1
         for child in self.children:
@@ -315,7 +316,11 @@ class Tag:
         
     def tagExtrasToHtml(self):
         extras = self.getTagExtras()
-        return ' '.join([extras[key].toHtml() for key in extras if len(extras[key].toHtml()) > 0])
+        try:
+            out = ' '.join([extras[key].toHtml() for key in extras if len(extras[key].toHtml()) > 0])
+        except:
+            print(extras)
+        return out
         
     def __str__(self):
         if len(self.children) == 0:
@@ -465,3 +470,29 @@ class Stylesheet(Doc):
 # END OF Stylesheet CLASS #
 ###########################
 
+class Component(Tag):
+
+    # component is a tag with style groups attached
+
+    def __init__(self, *args, **kwargs):
+        super(Component, self).__init__(*args, **kwargs)
+        self.styleGroups = list()
+        # ^ styles doesn't apply any styling directly
+        # rather, it makes sure that the styles
+        # get included in the stylesheet
+
+    def addStyleGroup(self, sg):
+        if type(sg) != StyleGroup:
+            raise Exception('parameter for Stylesheet.addStyleGroup() must be of type StyleGroup')
+        if sg not in self.styleGroups:
+            self.styleGroups.append(sg)
+
+    def removeStyleGroup(self, sg):
+        if type(sg) != StyleGroup:
+            raise Exception('parameter for Stylesheet.removeStyleGroup() must be of type StyleGroup')
+        if sg in self.styleGroups:
+            self.styleGroups.remove(sg)
+
+###########################
+# END OF Component CLASS  #
+###########################
