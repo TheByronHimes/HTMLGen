@@ -34,8 +34,9 @@ class Doc:
 
 class StyleGroup:
     ''' defines a bunch of styles to be applied to a selector '''
-    def __init__(self, selector=''):
+    def __init__(self, selector, className=''):
         self.selector = selector
+        self.className = className
         self.properties = dict()
 
     def removeProperty(self, prop):
@@ -132,13 +133,15 @@ class Tag:
             self.styles = dict()
             
             if len(styles) > 0:
-                if style.count(':') in (0, 1):
-                    self.set(self.parseStyle(style))
-                elif style.count(':') > 1:
+                if styles.count(':') in (0, 1):
+                    tup = self.parseStyle(self, styles)
+                    self.set(tup[0], tup[1])
+                elif styles.count(':') > 1:
                     try:
-                        style = style.split(';')
-                        for s in style:
-                            self.set(self.parseStyle(s))
+                        styles = styles.split(';')
+                        for s in styles:
+                            tup = self.parseStyle(s)
+                            self.set(tup[0], tup[1])
                     except:
                         raise Exception('Multiple styles must be passed in with format "styleName:styleValue; styleName:styleValue"')
             
@@ -146,7 +149,7 @@ class Tag:
         @staticmethod
         def parseStyle(self, s):
             ''' tries to get key val from string formatted like "key: val" '''
-            try:
+            try:                
                 key = s[:s.index(':')].strip()
                 val = s[s.index(':')+1:].strip()
                 return key, val
@@ -316,11 +319,7 @@ class Tag:
         
     def tagExtrasToHtml(self):
         extras = self.getTagExtras()
-        try:
-            out = ' '.join([extras[key].toHtml() for key in extras if len(extras[key].toHtml()) > 0])
-        except:
-            print(extras)
-        return out
+        return ' '.join([extras[key].toHtml() for key in extras if len(extras[key].toHtml()) > 0])
         
     def __str__(self):
         if len(self.children) == 0:
@@ -371,12 +370,30 @@ class Document(Doc):
         self.head.addChild(Tag('title', text='Test'))
         
         self.body = Tag('body')
-
+        self.styleGroups = list()
         self.content.addChild(self.head)
         self.content.addChild(self.body)
 
     def __str__(self):
         return str(self.content)
+
+    def collectStyleGroups(self):
+        ''' BFS search for component stylegroups '''
+        q = list()
+        if len(self.body.children) > 0:
+            for c in self.body.children:
+                q.append(c)
+            while len(q) > 0:
+                current = q[0]
+                q = q[1:]
+                if issubclass(type(current), Component):
+                    if len(current.styleGroups) > 0:
+                        for sg in current.styleGroups:
+                            if sg not in self.styleGroups:
+                                self.styleGroups.append(sg)
+                        for c in current.children:
+                            if c not in q:
+                                q.append(c)                    
 
     def linkStylesheet(self, stylesheet):
         if type(stylesheet) != Stylesheet:
@@ -398,6 +415,12 @@ class Document(Doc):
                 self.head.removeChild(ss[1])
                 self.stylesheets.remove(ss)
                 break
+
+    def syncStyleGroupsAndStylesheet(self, stylesheet):
+        if type(stylesheet) != Stylesheet:
+            raise Exception('parameter for Document.linkStylesheet() must be of type Stylesheet')
+        for sg in self.styleGroups:
+            stylesheet.addStyleGroup(sg)
             
        
 ###########################
@@ -486,6 +509,10 @@ class Component(Tag):
             raise Exception('parameter for Stylesheet.addStyleGroup() must be of type StyleGroup')
         if sg not in self.styleGroups:
             self.styleGroups.append(sg)
+
+    def applyStyleGroupClassNames(self):
+        for sg in self.styleGroups:
+            self.classes.add(sg.className)
 
     def removeStyleGroup(self, sg):
         if type(sg) != StyleGroup:

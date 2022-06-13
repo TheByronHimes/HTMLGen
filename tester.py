@@ -1,6 +1,7 @@
 import webbrowser
 from htmlgen import *
 import predefcss
+import predefcomponents
 
 
 class Tester:
@@ -17,23 +18,22 @@ class Tester:
         webbrowser.open_new_tab(doc.getOutputLocation() + 'test.html')
         
 
-## some basic test code
+## some basic test/example code
 tester = Tester()
-
-s = Stylesheet()
-s.setProperty('.class1', 'background-color', 'salmon')
-s.setProperty('.class1', 'font-size', '50px')
-s.addStyleGroup(predefcss.fillContainer)
-s.addStyleGroup(predefcss.flexCentered)
-
-
-
-# todo, add easy way to apply stylegroups to tags
-div1 = Tag('div', text='div1', classes='fillContainer flexCentered')
-div2 = Tag('div', text='div2', classes='class1')
-div1.addChild(div2)
-
 d = Document()
-d.body.addChild(div1)
+s = Stylesheet()
+
+a = predefcomponents.RoundCornerButton(text='Test Button')
+header = predefcomponents.BasicHeader()
+p = Tag('p', text='Title Here', styles='font-size: 30px')
+
+header.addChild(p)
+d.body.addChild(header)
+d.body.addChild(a)
+
+
+# last stuff to call
 d.linkStylesheet(s)
+d.collectStyleGroups()
+d.syncStyleGroupsAndStylesheet(s)
 tester.viewDocument(d)

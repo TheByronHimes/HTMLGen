@@ -6,13 +6,24 @@ class Subcontainer(Component):
     def __init__(self):
         super(Subcontainer, self).__init__(tag_name='div')
         self.addStyleGroup(predefcss.centerOnPage)
-        self.classes='centerOnPage'
+        self.addStyleGroup(predefcss.seeThruLite)
+        self.applyStyleGroupClassNames()
 
 
-class RoundButton(Component):
+class RoundCornerButton(Component):
     def __init__(self, text=''):
-        super(RoundButton, self).__init__(tag_name='button')
+        super(RoundCornerButton, self).__init__(tag_name='button')
         self.text=text
-        self.addStyleGroup(predefcss.circleBorder)
-        self.classes.add('circleBorder')
+        self.addStyleGroup(predefcss.roundBorders)
+        self.addStyleGroup(predefcss.basicButton)
+        self.addStyleGroup(predefcss.basicButtonHover)
+        self.addStyleGroup(predefcss.basicButtonActive)
+        self.addStyleGroup(predefcss.seeThruDark)
+        self.applyStyleGroupClassNames()
         
+
+class BasicHeader(Component):
+    def __init__(self):
+        super(BasicHeader, self).__init__(tag_name='div')
+        self.addStyleGroup(predefcss.basicHeader)
+        self.applyStyleGroupClassNames()
