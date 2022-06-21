@@ -1,4 +1,4 @@
-from htmlgen import Tag, StyleGroup, Component
+from sitepop import Tag, StyleGroup, Component
 import predefcss
 
 

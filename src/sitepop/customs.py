@@ -1,4 +1,4 @@
-from htmlgen import Tag
+from sitepop import Tag
 from components import Component
 import predefcss
 

@@ -2,7 +2,7 @@
 Here are some pre-defined styles to speed up common styling ops, like centering on a page
 '''
 
-from htmlgen import *
+from sitepop import *
 
 # center in parent
 centerOnPage = StyleGroup('.centerOnPage', 'centerOnPage')

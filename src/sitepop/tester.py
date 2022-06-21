@@ -1,5 +1,5 @@
 import webbrowser
-from htmlgen import *
+from sitepop import *
 import predefcss
 import predefcomponents
 
